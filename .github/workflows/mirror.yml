@@ -103,6 +103,27 @@ jobs:
             plug-ins/Apple.Core/Native/AppleCoreNative.xcodeproj/project.pbxproj
           echo "DEPLOYMENT_PATCH=raised to iOS/tvOS 15.0, macOS 12.0" >> "$GITHUB_ENV"
 
+      - name: Patch obsolete AssetDatabase call
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          # Unity 6000.5 marks GetInstanceID()/GetAssetPath(int) obsolete *as an
+          # error*, so Apple.Core.Editor does not compile — and it takes
+          # Apple.GameKit.Editor with it, which is what writes the
+          # com.apple.developer.game-center entitlement into the Xcode project.
+          # Partners would get a project full of errors and silently no Game
+          # Center. GetAssetPath(Object) is the same call without the round trip
+          # through an id, and exists in every Unity version we support.
+          F=plug-ins/Apple.Core/Apple.Core_Unity/Assets/Apple.Core/Editor/AppleBuildProfileEditor.cs
+          if grep -q "GetAssetPath(_serialized.*GetInstanceID())" "$F"; then
+            sed -i '' -E 's/GetAssetPath\((_serialized[A-Za-z]+)\.objectReferenceValue\.GetInstanceID\(\)\)/GetAssetPath(\1.objectReferenceValue)/g' "$F"
+            grep -q "GetInstanceID()" "$F" && { echo "::error::patch missed an occurrence in $F"; exit 1; }
+            echo "OBSOLETE_PATCH=AppleBuildProfileEditor: GetAssetPath(Object) instead of GetAssetPath(GetInstanceID())" >> "$GITHUB_ENV"
+            echo "Patched $F"
+          else
+            echo "Upstream no longer uses the obsolete call — nothing to patch."
+          fi
+
       - name: Build and pack
         working-directory: upstream
         run: |
@@ -198,7 +219,8 @@ jobs:
             -m "$PACKAGE $PKG_VERSION from ${{ inputs.upstream_tag }}" \
             -m "Built on $(hostname) with $XCODE_VERSION
           Platforms: ${{ inputs.platforms }}
-          ${DEPLOYMENT_PATCH:-Deployment targets: upstream defaults}"
+          ${DEPLOYMENT_PATCH:-Deployment targets: upstream defaults}
+          ${OBSOLETE_PATCH:-No source patches}"
           git tag -a "$TAG" -m "$PACKAGE $PKG_VERSION"
 
           if [ "${{ inputs.publish }}" != "true" ]; then
