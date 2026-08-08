@@ -24,16 +24,29 @@ package to `main`, and tags `v<version>`. Tags are written once and never moved 
 pin them.
 
 Apple does not tag Core separately, so the input is a plug-in tag such as `GameKit-4.0.1`,
-whose tree carries Core 3.2.0. The tag written here always comes from the built
-`package.json`, so it matches the package regardless of which upstream tag produced it.
+whose tree carries Core 3.2.0. The tag written here comes from the built `package.json`,
+plus any `tag_suffix` — this mirror publishes `-cosmic.N` because it carries the source
+patch below, and the suffix means a re-cut never has to move a tag someone has pinned.
+
+**Pin `v3.2.0-cosmic.1`.** The plain `v3.2.0` tag was the first cut, before the Unity
+6000.5 patch, and does not compile on 6000.5. It is left in place rather than moved, and
+should be deleted once nothing references it.
 
 ## Deviations from upstream
 
-- **No macOS or visionOS slices by default.** The mirror is built for iOS, tvOS and their
-  simulators — what partner games ship.
+- **iOS and iOS Simulator only.** macOS needs Apple's own signing team, and the runners
+  carry no tvOS or visionOS platform component. No partner game targets any of them.
 - **`Tests/` removed.** Upstream's test assembly references `com.unity.test-framework`,
   which a partner project need not have installed; without it the assembly fails to
   compile and takes the console down with it.
+- **`AppleBuildProfileEditor` patched for Unity 6000.5.** Upstream calls
+  `AssetDatabase.GetAssetPath(obj.GetInstanceID())`, and Unity 6000.5 marks both halves
+  obsolete *as an error* — so `Apple.Core.Editor` does not compile, and it takes
+  `Apple.GameKit.Editor` with it. That is the assembly which writes the
+  `com.apple.developer.game-center` entitlement into the Xcode project, so without this
+  the partner gets a console full of errors and silently no Game Center. The mirror uses
+  the `GetAssetPath(Object)` overload instead: same call, no obsolete round trip, valid on
+  every Unity version we support. Upstream `main` still has the original.
 - **Deployment targets** may be raised to iOS/tvOS 15.0 and macOS 12.0 when the build
   Xcode refuses upstream's 13.0/10.15 floors. Unity 6000.5 defaults to 15.0, so this costs
   partner games nothing. Whether it was applied is recorded in each publish commit.
