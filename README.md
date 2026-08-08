@@ -24,13 +24,12 @@ package to `main`, and tags `v<version>`. Tags are written once and never moved 
 pin them.
 
 Apple does not tag Core separately, so the input is a plug-in tag such as `GameKit-4.0.1`,
-whose tree carries Core 3.2.0. The tag written here comes from the built `package.json`,
-plus any `tag_suffix` — this mirror publishes `-cosmic.N` because it carries the source
-patch below, and the suffix means a re-cut never has to move a tag someone has pinned.
+whose tree carries Core 3.2.0. The tag written here comes from the built `package.json`.
 
-**Pin `v3.2.0-cosmic.1`.** The plain `v3.2.0` tag was the first cut, before the Unity
-6000.5 patch, and does not compile on 6000.5. It is left in place rather than moved, and
-should be deleted once nothing references it.
+Re-cutting a tag means deleting it and running the workflow again — deliberate, because
+partners pin these. Once a tag is out in a partner's manifest, prefer `tag_suffix`
+(`-cosmic.1`, `-cosmic.2`) so the old tag keeps resolving to what they already built
+against.
 
 ## Deviations from upstream
 
@@ -52,6 +51,10 @@ should be deleted once nothing references it.
   partner games nothing. Whether it was applied is recorded in each publish commit.
 
 Every published commit records the upstream tag, the exact Xcode, the machine, and the
-platform list, so any tag here can be traced back to how it was built. The workflow
-refuses a beta Xcode: partners ship these binaries, and Apple can reject submissions
-containing anything built with beta tooling.
+platform list, so any tag here can be traced back to how it was built. That is not
+decoration: the runners carry different Xcode versions (26.1.1 and 26.6 as of the first
+builds), and rebuilding the same source on the other machine changes every native binary
+in the package. The trailer is how you tell which compiler produced a given tag.
+
+The workflow refuses a beta Xcode: partners ship these binaries, and Apple can reject
+submissions containing anything built with beta tooling.
