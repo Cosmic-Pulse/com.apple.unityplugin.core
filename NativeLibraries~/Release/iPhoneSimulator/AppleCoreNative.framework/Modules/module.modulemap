@@ -7,4 +7,5 @@ framework module AppleCoreNative {
 
 module AppleCoreNative.Swift {
   header "AppleCoreNative-Swift.h"
+  requires objc
 }
